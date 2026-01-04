@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мій Іпотечний Калькулятор (єОселя / Стандарт)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .input-group { margin-bottom: 1rem; }
+        label { display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; }
+        input, select { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; }
+        th, td { padding: 0.75rem; text-align: left; font-size: 0.875rem; border-bottom: 1px solid #e5e7eb; }
+        .highlight { color: #2563eb; font-weight: bold; }
+    </style>
+</head>
+<body class="p-6">
+
+<div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+    
+    <div class="bg-white p-6 rounded-lg shadow md:col-span-1 h-fit">
+        <h2 class="text-xl font-bold mb-4 text-gray-800">Параметри іпотеки</h2>
+        
+        <div class="input-group">
+            <label>Режим розрахунку</label>
+            <select id="mode" onchange="toggleMode()">
+                <option value="term">Розрахувати місячний платіж (по рокам)</option>
+                <option value="payment" selected>Розрахувати строк (по комфортному платежу)</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label>Валюта</label>
+            <select id="currency" onchange="toggleCurrency()">
+                <option value="UAH">₴ UAH</option>
+                <option value="USD">$ USD</option>
+            </select>
+        </div>
+
+        <div class="input-group hidden" id="usdRateInput">
+            <label>Курс (UAH за 1 USD)</label>
+            <input type="number" id="exchangeRate" value="40" step="0.01" onchange="calculate()">
+            <small class="text-gray-500">Курс для перерахунку</small>
+        </div>
+
+        <div class="input-group">
+            <label>Вартість нерухомості (<span id="unitPrice">грн</span>)</label>
+            <input type="number" id="price" value="3000000" step="10000" oninput="onPriceInput()">
+        </div>
+
+        <div class="input-group">
+            <label>Перший внесок (<span id="unitDown">грн</span>)</label>
+            <input type="number" id="downPayment" value="600000" step="10000" oninput="onDownPaymentInput()">
+            <small class="text-gray-500" id="downPaymentPercent"></small>
+        </div>
+
+        <div class="input-group">
+            <label>Річна ставка (%)</label>
+            <input type="number" id="rate" value="7" step="0.1">
+            <small class="text-gray-500">7% для єОселя, 15-20% комерція</small>
+        </div>
+
+        <div class="input-group" id="termInputGroup">
+            <label>Термін кредиту (років)</label>
+            <input type="number" id="years" value="20">
+        </div>
+
+        <div class="input-group hidden" id="paymentInputGroup">
+            <label>Комфортний щомісячний платіж (<span id="unitTarget">грн</span>)</label>
+            <input type="number" id="targetPayment" value="25000">
+        </div>
+
+        <hr class="my-4">
+        <h3 class="font-bold text-gray-700 mb-2">Додаткові витрати (Україна)</h3>
+        
+        <div class="input-group">
+            <label>Пенсійний фонд (1% від вартості)</label>
+            <div class="flex items-center">
+                <input type="checkbox" id="pfuCheck" class="w-4 h-4 mr-2"> <span>Врахувати (1%)</span>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>Щорічна страховка (% від залишку)</label>
+            <input type="number" id="insuranceRate" value="0" step="0.01">
+        </div>
+
+        <div class="input-group">
+            <label>Разові комісії (Оцінка, Нотаріус, Банк) (<span id="unitFees">грн</span>)</label>
+            <input type="number" id="oneTimeFees" value="0">
+        </div>
+
+        <button onclick="calculate()" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-bold mt-2">Розрахувати</button>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow md:col-span-2">
+        <h2 class="text-xl font-bold mb-4 text-gray-800">Результати</h2>
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded">
+            <div>
+                <p class="text-sm text-gray-500">Щомісячний платіж</p>
+                <p class="text-lg font-bold text-blue-600" id="resPayment">-</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Реальний термін</p>
+                <p class="text-lg font-bold" id="resTerm">-</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Переплата (%)</p>
+                <p class="text-lg font-bold" id="resOverpay">-</p>
+            </div>
+             <div>
+                <p class="text-sm text-gray-500">Витрати на старті</p>
+                <p class="text-lg font-bold text-red-500" id="resStartCosts">-</p>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto max-h-[600px] overflow-y-auto border rounded">
+            <table class="w-full bg-white">
+                <thead class="bg-gray-100 sticky top-0">
+                    <tr>
+                        <th>Міс</th>
+                        <th>Платіж</th>
+                        <th>Тіло</th>
+                        <th>Відсотки</th>
+                        <th>Страховка</th>
+                        <th>Залишок</th>
+                    </tr>
+                </thead>
+                <tbody id="scheduleBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleMode() {
+        const mode = document.getElementById('mode').value;
+        if (mode === 'term') {
+            document.getElementById('termInputGroup').classList.remove('hidden');
+            document.getElementById('paymentInputGroup').classList.add('hidden');
+        } else {
+            document.getElementById('termInputGroup').classList.add('hidden');
+            document.getElementById('paymentInputGroup').classList.remove('hidden');
+        }
+    }
+
+    function formatMoney(num, currency) {
+        if (!isFinite(num)) num = 0;
+        if (currency === 'USD') {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Math.round(num));
+        } else {
+            return new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', maximumFractionDigits: 0 }).format(Math.round(num));
+        }
+    }
+
+    function getCurrencyCode() {
+        return document.getElementById('currency').value === 'USD' ? 'USD' : 'UAH';
+    }
+
+    function convertForDisplay(amount) {
+        const curr = document.getElementById('currency').value;
+        const prev = window._storedCurrency || 'UAH';
+        const rate = parseFloat(document.getElementById('exchangeRate').value) || 1;
+        // Only convert for display when the stored input currency differs from the selected display currency
+        if (curr === prev) return amount;
+        if (curr === 'USD' && prev === 'UAH') return amount / rate;
+        if (curr === 'UAH' && prev === 'USD') return amount * rate;
+        return amount;
+    }
+
+    // track stored currency for input conversions (initialize from current select)
+    window._storedCurrency = document.getElementById('currency') ? document.getElementById('currency').value : 'UAH';
+    // track whether user manually edited down payment (don't override it when price changes)
+    window._downManual = false;
+
+    function setInitialComfortPayment() {
+        // Set comfort payment to $2000 by default (convert to UAH if needed)
+        const exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 1;
+        const curr = document.getElementById('currency').value;
+        if (!window._comfortSet) {
+            if (curr === 'USD') {
+                document.getElementById('targetPayment').value = 2000;
+            } else {
+                document.getElementById('targetPayment').value = Math.round(2000 * exchangeRate);
+            }
+            window._comfortSet = true;
+        }
+    }
+
+    function onPriceInput() {
+        const price = parseFloat(document.getElementById('price').value) || 0;
+        if (!window._downManual) {
+            document.getElementById('downPayment').value = Math.round(price * 0.2);
+        }
+        calculate();
+    }
+
+    function onDownPaymentInput() {
+        // mark as manually edited so price changes won't overwrite it
+        window._downManual = true;
+        calculate();
+    }
+
+    function toggleCurrency() {
+        const curr = document.getElementById('currency').value;
+        const usdRateInput = document.getElementById('usdRateInput');
+        const rate = parseFloat(document.getElementById('exchangeRate').value) || 1;
+
+        // convert input values only when switching actual currency state
+        const prev = window._storedCurrency || 'UAH';
+        if (prev !== curr) {
+            const ids = ['price','downPayment','targetPayment','oneTimeFees'];
+            if (curr === 'USD') {
+                ids.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && el.value) el.value = Math.round((parseFloat(el.value || 0) / rate));
+                });
+            } else {
+                ids.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && el.value) el.value = Math.round((parseFloat(el.value || 0) * rate));
+                });
+            }
+            window._storedCurrency = curr;
+        }
+
+        if (curr === 'USD') usdRateInput.classList.remove('hidden'); else usdRateInput.classList.add('hidden');
+        // update unit labels
+        document.getElementById('unitPrice').innerText = curr === 'USD' ? 'USD' : 'грн';
+        document.getElementById('unitDown').innerText = curr === 'USD' ? 'USD' : 'грн';
+        document.getElementById('unitTarget').innerText = curr === 'USD' ? 'USD' : 'грн';
+        document.getElementById('unitFees').innerText = curr === 'USD' ? 'USD' : 'грн';
+        calculate();
+    }
+
+    function calculate() {
+        // Get Inputs
+        const price = parseFloat(document.getElementById('price').value);
+        const downPayment = parseFloat(document.getElementById('downPayment').value);
+        const ratePercent = parseFloat(document.getElementById('rate').value);
+        const mode = document.getElementById('mode').value;
+        const insuranceRate = parseFloat(document.getElementById('insuranceRate').value) / 100;
+        const oneTimeFees = parseFloat(document.getElementById('oneTimeFees').value);
+        const hasPFU = document.getElementById('pfuCheck').checked;
+        const currency = document.getElementById('currency').value;
+        const exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 1;
+
+        // Validations
+        if (downPayment >= price) { alert("Перший внесок більший за ціну!"); return; }
+        
+        // Show Down Payment %
+        const dpPercent = (downPayment / price) * 100;
+        document.getElementById('downPaymentPercent').innerText = `(${dpPercent.toFixed(1)}% від ціни)`;
+
+        let loanBody = price - downPayment;
+        const monthlyRate = ratePercent / 12 / 100;
+        
+        let monthlyPayment = 0;
+        let months = 0;
+
+        // Logic split based on mode
+        if (mode === 'term') {
+            const years = parseFloat(document.getElementById('years').value);
+            months = years * 12;
+            // Annuity Formula: A = P * (r * (1+r)^n) / ((1+r)^n - 1)
+            monthlyPayment = loanBody * (monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
+        } else {
+            monthlyPayment = parseFloat(document.getElementById('targetPayment').value);
+            // Validation: Payment must cover at least interest
+            const firstMonthInterest = loanBody * monthlyRate;
+            if (monthlyPayment <= firstMonthInterest) {
+                alert(`Платіж занадто малий! Тільки відсотки в перший місяць складають ${formatMoney(convertForDisplay(firstMonthInterest), getCurrencyCode())}`);
+                return;
+            }
+            // Calculate months iteratively (simpler than log formula for mixing with insurance)
+             // We will calculate in the loop below, just setup limit
+             months = 0; 
+        }
+
+        // Keep the originally scheduled payment separate (don't mutate it during loop)
+        const scheduledPayment = monthlyPayment || 0;
+
+        // Generate Schedule
+        let balance = loanBody;
+        let totalInterest = 0;
+        let totalInsurance = 0;
+        let html = '';
+        let loopMonth = 1;
+        
+        // Safety break for loop
+        const MAX_MONTHS = 600; // 50 years
+
+        // Use a small epsilon to avoid missing the last payment due to rounding
+        const EPS = 0.0001;
+        while (balance > EPS && loopMonth <= MAX_MONTHS) {
+            let interest = balance * monthlyRate;
+            
+            // Insurance calculation (usually paid annually, but let's smooth it monthly for view or check logic)
+            // Simplified: Monthly insurance part based on outstanding balance annual rate
+            let insurance = (balance * insuranceRate) / 12; 
+
+            // Determine payment for this month without mutating the scheduled amount
+            let paymentThisMonth = scheduledPayment;
+            let principal = 0;
+
+            if (mode === 'term') {
+                // Fixed annuity payment logic
+                // monthlyPayment equals scheduledPayment here
+                principal = paymentThisMonth - interest;
+            } else {
+                // Fixed Payment logic: last payment may be smaller
+                if (balance + interest < scheduledPayment) {
+                    paymentThisMonth = balance + interest; // Last payment adjustment for this month only
+                }
+                principal = paymentThisMonth - interest;
+            }
+            
+            if (principal > balance) principal = balance;
+            
+            balance -= principal;
+            totalInterest += interest;
+            totalInsurance += insurance;
+
+            // Convert for display if needed
+            const dispPaymentWithInsurance = convertForDisplay(paymentThisMonth + insurance);
+            const dispPrincipal = convertForDisplay(principal);
+            const dispInterest = convertForDisplay(interest);
+            const dispInsurance = convertForDisplay(insurance);
+            const dispBalance = convertForDisplay(balance);
+
+            html += `<tr>
+                <td>${loopMonth}</td>
+                <td class="font-bold">${formatMoney(dispPaymentWithInsurance, getCurrencyCode())}</td>
+                <td>${formatMoney(dispPrincipal, getCurrencyCode())}</td>
+                <td class="text-red-600">${formatMoney(dispInterest, getCurrencyCode())}</td>
+                <td class="text-gray-500">${formatMoney(dispInsurance, getCurrencyCode())}</td>
+                <td>${formatMoney(dispBalance, getCurrencyCode())}</td>
+            </tr>`;
+            
+            if (balance <= EPS) break;
+            loopMonth++;
+        }
+        
+        if (mode === 'payment') {
+            months = loopMonth; // Actual months calculated
+        }
+
+        document.getElementById('scheduleBody').innerHTML = html;
+
+        // Totals
+        const pfu = hasPFU ? price * 0.01 : 0;
+        const totalStartCosts = downPayment + pfu + oneTimeFees;
+        const totalOverpay = totalInterest + totalInsurance;
+
+        // Render Top Results
+        const firstMonthInsurance = ( (price - downPayment) * insuranceRate ) / 12;
+        const dispPayment = convertForDisplay(scheduledPayment);
+        const dispIns = convertForDisplay(firstMonthInsurance);
+        document.getElementById('resPayment').innerText = `${formatMoney(dispPayment, getCurrencyCode())} (страх.: ${formatMoney(dispIns, getCurrencyCode())})`;
+        
+        const yearsResult = Math.floor(months / 12);
+        const monthsResult = months % 12;
+        document.getElementById('resTerm').innerText = `${yearsResult} р. ${monthsResult} міс.`;
+        
+        document.getElementById('resOverpay').innerText = formatMoney(convertForDisplay(totalOverpay), getCurrencyCode());
+        // Show full start costs including down payment
+        document.getElementById('resStartCosts').innerText = formatMoney(convertForDisplay(totalStartCosts), getCurrencyCode()); // Includes downPayment, PFU, one-time fees
+    }
+
+    // Initial run
+    toggleMode();
+    setInitialComfortPayment();
+    toggleCurrency();
+    calculate();
+</script>
+
+</body>
+</html>
