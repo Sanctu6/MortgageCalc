@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Іпотечний Калькулятор</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="p-6">
+
+<div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+    
+    <!-- Input Panel -->
+    <div class="bg-white p-6 rounded-lg shadow md:col-span-1 h-fit">
+        <h2 class="text-xl font-bold mb-4 text-gray-800">Параметри іпотеки</h2>
+        
+        <!-- Calculation Mode -->
+        <div class="input-group">
+            <label>Режим розрахунку</label>
+            <select id="mode">
+                <option value="term">Розрахувати місячний платіж (по рокам)</option>
+                <option value="payment" selected>Розрахувати строк (по комфортному платежу)</option>
+            </select>
+        </div>
+
+        <!-- Currency -->
+        <div class="input-group">
+            <label>Валюта</label>
+            <select id="currency">
+                <option value="UAH">₴ UAH</option>
+                <option value="USD">$ USD</option>
+            </select>
+        </div>
+
+        <div class="input-group hidden" id="usdRateInput">
+            <label>Курс (UAH за 1 USD)</label>
+            <input type="number" id="exchangeRate" value="40" step="0.01">
+            <small class="text-gray-500">Курс для перерахунку</small>
+        </div>
+
+        <!-- Main Parameters -->
+        <div class="input-group">
+            <label>Вартість нерухомості (<span id="unitPrice">грн</span>)</label>
+            <input type="number" id="price" value="3000000" step="10000">
+        </div>
+
+        <div class="input-group">
+            <label>Перший внесок (<span id="unitDown">грн</span>)</label>
+            <input type="number" id="downPayment" value="600000" step="10000">
+            <small class="text-gray-500" id="downPaymentPercent"></small>
+        </div>
+
+        <div class="input-group">
+            <label>Річна ставка (%)</label>
+            <input type="number" id="rate" value="7" step="0.1">
+            <small class="text-gray-500">7% для єОселя, 15-20% комерція</small>
+        </div>
+
+        <div class="input-group" id="termInputGroup">
+            <label>Термін кредиту (років)</label>
+            <input type="number" id="years" value="20">
+        </div>
+
+        <div class="input-group hidden" id="paymentInputGroup">
+            <label>Комфортний щомісячний платіж (<span id="unitTarget">грн</span>)</label>
+            <input type="number" id="targetPayment" value="25000">
+        </div>
+
+        <hr class="my-4">
+        <h3 class="font-bold text-gray-700 mb-2">Додаткові витрати (Україна)</h3>
+        
+        <div class="input-group">
+            <label>Пенсійний фонд (1% від вартості)</label>
+            <div class="flex items-center">
+                <input type="checkbox" id="pfuCheck" class="w-4 h-4 mr-2"> <span>Врахувати (1%)</span>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>Щорічна страховка (% від залишку)</label>
+            <input type="number" id="insuranceRate" value="0" step="0.01">
+        </div>
+
+        <div class="input-group">
+            <label>Разові комісії (Оцінка, Нотаріус, Банк) (<span id="unitFees">грн</span>)</label>
+            <input type="number" id="oneTimeFees" value="0">
+        </div>
+
+        <button id="calculateBtn" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-bold mt-2">Розрахувати</button>
+    </div>
+
+    <!-- Results Panel -->
+    <div class="bg-white p-6 rounded-lg shadow md:col-span-2">
+        <h2 class="text-xl font-bold mb-4 text-gray-800">Результати</h2>
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded">
+            <div>
+                <p class="text-sm text-gray-500">Щомісячний платіж</p>
+                <p class="text-lg font-bold text-blue-600" id="resPayment">-</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Реальний термін</p>
+                <p class="text-lg font-bold" id="resTerm">-</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Переплата (%)</p>
+                <p class="text-lg font-bold" id="resOverpay">-</p>
+            </div>
+             <div>
+                <p class="text-sm text-gray-500">Витрати на старті</p>
+                <p class="text-lg font-bold text-red-500" id="resStartCosts">-</p>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto max-h-[600px] overflow-y-auto border rounded">
+            <table class="w-full bg-white">
+                <thead class="bg-gray-100 sticky top-0">
+                    <tr>
+                        <th>Міс</th>
+                        <th>Платіж</th>
+                        <th>Тіло</th>
+                        <th>Відсотки</th>
+                        <th>Страховка</th>
+                        <th>Залишок</th>
+                    </tr>
+                </thead>
+                <tbody id="scheduleBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="js/calculator.js"></script>
+</body>
+</html>
