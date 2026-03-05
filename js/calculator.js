@@ -1,13 +1,7 @@
-/**
- * Mortgage Calculator Application
- * Calculates mortgage payments and amortization schedule for Ukrainian market
- * Supports both UAH and USD currencies with exchange rate conversion
- */
-
 const MortgageCalculator = (() => {
     // ========== Constants ==========
     const CONFIG = {
-        DEFAULT_CURRENCY: 'UAH',
+        DEFAULT_CURRENCY: 'USD',
         DEFAULT_MODE: 'payment',
         DEFAULT_EXCHANGE_RATE: 40,
         MAX_MONTHS: 600, // 50 years safety limit
