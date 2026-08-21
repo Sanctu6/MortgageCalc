@@ -55,6 +55,7 @@ body {
 .section-title { font-size: 1.7rem; }
 .intro { color: var(--muted); font-size: 0.95rem; line-height: 1.5; margin: 0.75rem 0 1.5rem; }
 .hint { color: var(--muted); font-size: 0.75rem; }
+.down-payment-warning { color: #a1261c; font-weight: 700; }
 .results-heading { align-items: flex-start; display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
 .rate-badge { background: var(--accent-soft); border-radius: 999px; color: var(--accent-dark); font: 700 0.8rem 'Trebuchet MS', sans-serif; padding: 0.55rem 0.75rem; white-space: nowrap; }
 

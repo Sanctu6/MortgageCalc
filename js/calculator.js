@@ -20,7 +20,6 @@ const MortgageCalculator = (() => {
     // ========== State Management ==========
     let state = {
         storedCurrency: CONFIG.DEFAULT_CURRENCY,
-        downPaymentManual: false,
         comfortPaymentInitialized: false,
     };
 
@@ -143,21 +142,11 @@ const MortgageCalculator = (() => {
 
     const handlePriceInput = () => {
         const price = readNumber(DOM.price);
-        if (!state.downPaymentManual) {
-            DOM.downPayment.value = Math.ceil(price * 0.2);
-            formatInputValue(DOM.downPayment);
-        }
         updateDownPaymentLimits(price);
         calculate();
     };
 
     const handleDownPaymentInput = () => {
-        state.downPaymentManual = true;
-        const price = readNumber(DOM.price);
-        const minimum = price * 0.2;
-        const value = readNumber(DOM.downPayment);
-        if (value < minimum) DOM.downPayment.value = Math.ceil(minimum);
-        if (value > price) DOM.downPayment.value = price;
         calculate();
     };
 
@@ -224,6 +213,20 @@ const MortgageCalculator = (() => {
     const clearError = () => {
         DOM.errorMessage.textContent = '';
         DOM.errorMessage.classList.add('hidden');
+    };
+
+    const updateDownPaymentHint = (price, downPayment) => {
+        if (price <= 0) {
+            DOM.downPaymentPercent.textContent = '20% від вартості: введіть ціну нерухомості';
+            DOM.downPaymentPercent.classList.remove('down-payment-warning');
+            return;
+        }
+
+        const minimum = price * 0.2;
+        const downPaymentPercent = (downPayment / price) * 100;
+        const minimumText = formatMoney(convertForDisplay(minimum), getCurrencyCode());
+        DOM.downPaymentPercent.textContent = `20% від вартості: ${minimumText} | Введено: ${downPaymentPercent.toFixed(1)}%`;
+        DOM.downPaymentPercent.classList.toggle('down-payment-warning', downPayment < minimum);
     };
 
     const formatMoney = (amount, currency) => {
@@ -421,9 +424,10 @@ const MortgageCalculator = (() => {
         const hasPFU = DOM.pfuCheck.checked;
         const currency = getCurrencyCode();
 
+        updateDownPaymentHint(price, downPayment);
+
         // Validate
         if (price <= 0 || downPayment < price * 0.2 || downPayment >= price) {
-            DOM.downPaymentPercent.textContent = 'Внесок: від 20% і менше 100%';
             showError('Перший внесок має бути не менше 20% і менше повної вартості нерухомості.');
             return;
         }
@@ -432,10 +436,6 @@ const MortgageCalculator = (() => {
         const loanBody = price - downPayment;
         const initialMonthlyRate = ratePercent / 12 / 100;
         const followingMonthlyRate = CONFIG.FOLLOWING_RATE_PERCENT / 12 / 100;
-
-        // Display down payment percentage
-        const downPaymentPercent = (downPayment / price) * 100;
-        DOM.downPaymentPercent.textContent = `(${downPaymentPercent.toFixed(1)}% від ціни)`;
 
         // Calculate monthly payment
         let monthlyPayment = 0;
