@@ -83,7 +83,24 @@ button#calculateBtn:hover { background: var(--accent-dark); transform: translate
 #resPayment { color: var(--accent-dark); }
 #resStartCosts { color: var(--warning); }
 
-.results-panel .grid.grid-cols-2 {
+.results-summary {
+    display: grid;
+    grid-template-columns: minmax(15rem, 2fr) repeat(3, minmax(8rem, 1fr));
+}
+
+.summary-item {
+    min-width: 0;
+}
+
+.summary-item p:last-child {
+    overflow-wrap: anywhere;
+}
+
+.summary-payment {
+    grid-column: span 2;
+}
+
+.results-panel .results-summary {
     background: #f0f6f2;
     border: 1px solid var(--line);
 }
@@ -151,6 +168,11 @@ th {
     .results-heading { display: block; }
     .rate-badge { display: inline-block; margin-top: 0.8rem; }
     th, td { padding: 0.65rem 0.5rem; }
+}
+
+@media (max-width: 900px) {
+    .results-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .summary-payment { grid-column: span 2; }
 }
 
 /* Print Styles */
