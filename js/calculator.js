@@ -300,28 +300,40 @@ const MortgageCalculator = (() => {
         followingMonthlyRate,
         monthlyPayment,
         mode,
-        insuranceRate
+        insuranceRate,
+        plannedMonths
     ) => {
         let balance = loanBody;
         let totalInterest = 0;
         let totalInsurance = 0;
         let scheduleRows = [];
         let currentMonth = 1;
-
-        const scheduledPayment = monthlyPayment || 0;
+        let currentPayment = monthlyPayment || 0;
+        let paymentAfterRateChange = null;
 
         while (balance > CONFIG.EPSILON && currentMonth <= CONFIG.MAX_MONTHS) {
             const monthlyRate = currentMonth <= CONFIG.PROMO_RATE_MONTHS
                 ? initialMonthlyRate
                 : followingMonthlyRate;
+
+            if (mode === 'term' && currentMonth === CONFIG.PROMO_RATE_MONTHS + 1) {
+                const remainingMonths = Math.max(plannedMonths - CONFIG.PROMO_RATE_MONTHS, 1);
+                currentPayment = calculateMonthlyPaymentAnnuity(
+                    balance,
+                    followingMonthlyRate,
+                    remainingMonths
+                );
+                paymentAfterRateChange = currentPayment;
+            }
+
             const interest = balance * monthlyRate;
             const insurance = (balance * insuranceRate) / CONFIG.MONTHS_PER_YEAR;
 
-            let paymentThisMonth = scheduledPayment;
+            let paymentThisMonth = currentPayment;
             let principal = 0;
 
             // Determine principal based on mode
-            if (mode === 'payment' && balance + interest < scheduledPayment) {
+            if (mode === 'payment' && balance + interest < currentPayment) {
                 // Last payment in "target payment" mode
                 paymentThisMonth = balance + interest;
             }
@@ -354,6 +366,7 @@ const MortgageCalculator = (() => {
             months: currentMonth,
             totalInterest,
             totalInsurance,
+            paymentAfterRateChange,
         };
     };
 
@@ -374,13 +387,17 @@ const MortgageCalculator = (() => {
         DOM.scheduleBody.innerHTML = html;
     };
 
-    const renderResults = (monthlyPayment, months, totalOverpay, totalStartCosts, loanBody, insuranceRate, currency) => {
+    const renderResults = (monthlyPayment, months, totalOverpay, totalStartCosts, loanBody, insuranceRate, currency, paymentAfterRateChange) => {
         // Monthly payment with insurance
         const firstMonthInsurance = (loanBody * insuranceRate) / CONFIG.MONTHS_PER_YEAR;
         const displayPayment = convertForDisplay(monthlyPayment);
         const displayInsurance = convertForDisplay(firstMonthInsurance);
 
-        DOM.resPayment.textContent = `${formatMoney(displayPayment, currency)} (страх.: ${formatMoney(displayInsurance, currency)})`;
+        const paymentText = `${formatMoney(displayPayment, currency)} (страх.: ${formatMoney(displayInsurance, currency)})`;
+        const followingPaymentText = paymentAfterRateChange
+            ? ` → після 10 років: ${formatMoney(convertForDisplay(paymentAfterRateChange), currency)}`
+            : '';
+        DOM.resPayment.textContent = `${paymentText}${followingPaymentText}`;
 
         // Term
         const years = Math.floor(months / CONFIG.MONTHS_PER_YEAR);
@@ -392,22 +409,6 @@ const MortgageCalculator = (() => {
 
         // Start costs
         DOM.resStartCosts.textContent = formatMoney(convertForDisplay(totalStartCosts), currency);
-    };
-
-    const calculateMixedRatePayment = (loanBody, initialMonthlyRate, followingMonthlyRate, months) => {
-        let presentValueFactor = 0;
-        for (let month = 1; month <= months; month++) {
-            const rate = month <= CONFIG.PROMO_RATE_MONTHS ? initialMonthlyRate : followingMonthlyRate;
-            let discountFactor = 1;
-            for (let discountMonth = 1; discountMonth <= month; discountMonth++) {
-                const discountRate = discountMonth <= CONFIG.PROMO_RATE_MONTHS
-                    ? initialMonthlyRate
-                    : followingMonthlyRate;
-                discountFactor *= 1 + discountRate;
-            }
-            presentValueFactor += 1 / discountFactor;
-        }
-        return loanBody / presentValueFactor;
     };
 
     // ========== Main Calculation Logic ==========
@@ -444,12 +445,7 @@ const MortgageCalculator = (() => {
         if (mode === 'term') {
             const years = readNumber(DOM.years);
             months = years * CONFIG.MONTHS_PER_YEAR;
-            monthlyPayment = calculateMixedRatePayment(
-                loanBody,
-                initialMonthlyRate,
-                followingMonthlyRate,
-                months
-            );
+            monthlyPayment = calculateMonthlyPaymentAnnuity(loanBody, initialMonthlyRate, months);
         } else {
             monthlyPayment = readNumber(DOM.targetPayment);
             if (!validateInputs(loanBody, monthlyPayment, initialMonthlyRate)) {
@@ -464,7 +460,8 @@ const MortgageCalculator = (() => {
             followingMonthlyRate,
             monthlyPayment,
             mode,
-            insuranceRate
+            insuranceRate,
+            months
         );
 
         if (mode === 'payment') {
@@ -487,7 +484,8 @@ const MortgageCalculator = (() => {
             totalStartCosts,
             loanBody,
             insuranceRate,
-            currency
+            currency,
+            result.paymentAfterRateChange
         );
     };
 
