@@ -38,6 +38,7 @@ const MortgageCalculator = (() => {
         pfuCheck: null,
         insuranceRate: null,
         oneTimeFees: null,
+        numericInputs: [],
 
         // UI elements
         usdRateInput: null,
@@ -72,6 +73,7 @@ const MortgageCalculator = (() => {
             this.pfuCheck = document.getElementById('pfuCheck');
             this.insuranceRate = document.getElementById('insuranceRate');
             this.oneTimeFees = document.getElementById('oneTimeFees');
+            this.numericInputs = [...document.querySelectorAll('.formatted-input')];
 
             // UI elements
             this.usdRateInput = document.getElementById('usdRateInput');
@@ -103,6 +105,15 @@ const MortgageCalculator = (() => {
         DOM.downPayment.addEventListener('input', handleDownPaymentInput);
         DOM.exchangeRate.addEventListener('change', calculate);
         DOM.calculateBtn.addEventListener('click', calculate);
+        DOM.numericInputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.value = input.value.replace(/\s/g, '');
+                input.select();
+            });
+            input.addEventListener('blur', () => {
+                formatInputValue(input);
+            });
+        });
 
         // Also calculate on any parameter change
         [DOM.rate, DOM.years, DOM.targetPayment, DOM.pfuCheck, DOM.insuranceRate, DOM.oneTimeFees]
@@ -129,9 +140,10 @@ const MortgageCalculator = (() => {
     };
 
     const handlePriceInput = () => {
-        const price = parseFloat(DOM.price.value) || 0;
+        const price = readNumber(DOM.price);
         if (!state.downPaymentManual) {
-            DOM.downPayment.value = Math.round(price * 0.2);
+            DOM.downPayment.value = Math.ceil(price * 0.2);
+            formatInputValue(DOM.downPayment);
         }
         updateDownPaymentLimits(price);
         calculate();
@@ -139,9 +151,9 @@ const MortgageCalculator = (() => {
 
     const handleDownPaymentInput = () => {
         state.downPaymentManual = true;
-        const price = parseFloat(DOM.price.value) || 0;
+        const price = readNumber(DOM.price);
         const minimum = price * 0.2;
-        const value = parseFloat(DOM.downPayment.value) || 0;
+        const value = readNumber(DOM.downPayment);
         if (value < minimum) DOM.downPayment.value = Math.ceil(minimum);
         if (value > price) DOM.downPayment.value = price;
         calculate();
@@ -155,7 +167,7 @@ const MortgageCalculator = (() => {
     const handleCurrencyChange = () => {
         const currentCurrency = DOM.currency.value;
         const previousCurrency = state.storedCurrency;
-        const exchangeRate = parseFloat(DOM.exchangeRate.value) || 1;
+        const exchangeRate = readNumber(DOM.exchangeRate, 1);
 
         // Convert input values when switching currency
         if (previousCurrency !== currentCurrency) {
@@ -163,7 +175,7 @@ const MortgageCalculator = (() => {
             inputIds.forEach(id => {
                 const element = document.getElementById(id);
                 if (element && element.value) {
-                    const currentValue = parseFloat(element.value) || 0;
+                    const currentValue = readNumber(element);
                     element.value = currentCurrency === 'USD'
                         ? Math.round(currentValue / exchangeRate)
                         : Math.round(currentValue * exchangeRate);
@@ -171,6 +183,7 @@ const MortgageCalculator = (() => {
             });
             state.storedCurrency = currentCurrency;
         }
+        DOM.numericInputs.forEach(formatInputValue);
 
         // Toggle exchange rate input visibility
         DOM.usdRateInput.classList.toggle('hidden', currentCurrency !== 'USD');
@@ -186,6 +199,21 @@ const MortgageCalculator = (() => {
     };
 
     // ========== Formatting Functions ==========
+    const readNumber = (input, fallback = 0) => {
+        const value = Number.parseFloat(String(input.value).replace(/\s/g, '').replace(',', '.'));
+        return Number.isFinite(value) ? value : fallback;
+    };
+
+    const formatInputValue = (input) => {
+        const rawValue = String(input.value).replace(/\s/g, '');
+        if (!rawValue || rawValue === '-' || rawValue === '.') return;
+        const [integerPart, decimalPart] = rawValue.split('.');
+        const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        input.value = decimalPart === undefined
+            ? formattedInteger
+            : `${formattedInteger}.${decimalPart}`;
+    };
+
     const formatMoney = (amount, currency) => {
         if (!isFinite(amount)) amount = 0;
 
@@ -201,7 +229,7 @@ const MortgageCalculator = (() => {
     const convertForDisplay = (amount) => {
         const currentCurrency = DOM.currency.value;
         const previousCurrency = state.storedCurrency;
-        const exchangeRate = parseFloat(DOM.exchangeRate.value) || 1;
+        const exchangeRate = readNumber(DOM.exchangeRate, 1);
 
         // No conversion needed if currencies match
         if (currentCurrency === previousCurrency) return amount;
@@ -220,7 +248,7 @@ const MortgageCalculator = (() => {
     const initializeComfortPayment = () => {
         if (state.comfortPaymentInitialized) return;
 
-        const exchangeRate = parseFloat(DOM.exchangeRate.value) || 1;
+        const exchangeRate = readNumber(DOM.exchangeRate, 1);
         const currency = DOM.currency.value;
         const defaultPayment = 2000; // USD
 
@@ -370,12 +398,12 @@ const MortgageCalculator = (() => {
     // ========== Main Calculation Logic ==========
     const calculate = () => {
         // Collect inputs
-        const price = parseFloat(DOM.price.value) || 0;
-        const downPayment = parseFloat(DOM.downPayment.value) || 0;
-        const ratePercent = parseFloat(DOM.rate.value) || 0;
+        const price = readNumber(DOM.price);
+        const downPayment = readNumber(DOM.downPayment);
+        const ratePercent = readNumber(DOM.rate);
         const mode = DOM.mode.value;
-        const insuranceRate = (parseFloat(DOM.insuranceRate.value) || 0) / 100;
-        const oneTimeFees = parseFloat(DOM.oneTimeFees.value) || 0;
+        const insuranceRate = readNumber(DOM.insuranceRate) / 100;
+        const oneTimeFees = readNumber(DOM.oneTimeFees);
         const hasPFU = DOM.pfuCheck.checked;
         const currency = getCurrencyCode();
 
@@ -401,7 +429,7 @@ const MortgageCalculator = (() => {
         let months = 0;
 
         if (mode === 'term') {
-            const years = parseFloat(DOM.years.value) || 0;
+            const years = readNumber(DOM.years);
             months = years * CONFIG.MONTHS_PER_YEAR;
             monthlyPayment = calculateMixedRatePayment(
                 loanBody,
@@ -410,7 +438,7 @@ const MortgageCalculator = (() => {
                 months
             );
         } else {
-            monthlyPayment = parseFloat(DOM.targetPayment.value) || 0;
+            monthlyPayment = readNumber(DOM.targetPayment);
             if (!validateInputs(loanBody, monthlyPayment, initialMonthlyRate)) {
                 return;
             }
@@ -453,7 +481,8 @@ const MortgageCalculator = (() => {
     // ========== Initialization ==========
     const init = () => {
         DOM.init();
-        updateDownPaymentLimits(parseFloat(DOM.price.value) || 0);
+        updateDownPaymentLimits(readNumber(DOM.price));
+        DOM.numericInputs.forEach(formatInputValue);
         setupEventListeners();
         initializeComfortPayment();
         handleModeChange();

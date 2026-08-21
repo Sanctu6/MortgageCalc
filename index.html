@@ -37,36 +37,36 @@
 
         <div class="input-group" id="usdRateInput">
             <label>Курс (UAH за 1 USD)</label>
-            <input type="number" id="exchangeRate" value="40" step="0.01">
+            <input type="text" inputmode="decimal" id="exchangeRate" class="formatted-input" value="40" data-step="0.01">
             <small class="text-gray-500">Курс для перерахунку</small>
         </div>
 
         <!-- Main Parameters -->
         <div class="input-group">
             <label>Вартість нерухомості (<span id="unitPrice">USD</span>)</label>
-            <input type="number" id="price" value="4000000" min="1" step="1000">
+            <input type="text" inputmode="numeric" id="price" class="formatted-input" value="4000000" min="1" data-step="1000">
         </div>
 
         <div class="input-group">
             <label>Перший внесок (<span id="unitDown">USD</span>)</label>
-            <input type="number" id="downPayment" value="800000" min="800000" max="3999999" step="1000">
+            <input type="text" inputmode="numeric" id="downPayment" class="formatted-input" value="800000" min="800000" max="3999999" data-step="1000">
             <small class="text-gray-500" id="downPaymentPercent"></small>
         </div>
 
         <div class="input-group">
             <label>Пільгова річна ставка (%)</label>
-            <input type="number" id="rate" value="7" step="0.1">
+            <input type="text" inputmode="decimal" id="rate" class="formatted-input" value="7" data-step="0.1">
             <small class="hint">7% перші 10 років, потім автоматично 10%</small>
         </div>
 
         <div class="input-group" id="termInputGroup">
             <label>Термін кредиту (років)</label>
-            <input type="number" id="years" value="20">
+            <input type="text" inputmode="numeric" id="years" class="formatted-input" value="20">
         </div>
 
         <div class="input-group hidden" id="paymentInputGroup">
             <label>Комфортний щомісячний платіж (<span id="unitTarget">USD</span>)</label>
-            <input type="number" id="targetPayment" value="2000">
+            <input type="text" inputmode="numeric" id="targetPayment" class="formatted-input" value="2000">
         </div>
 
         <hr class="my-4">
@@ -81,12 +81,12 @@
 
         <div class="input-group">
             <label>Щорічна страховка (% від залишку)</label>
-            <input type="number" id="insuranceRate" value="0" step="0.01">
+            <input type="text" inputmode="decimal" id="insuranceRate" class="formatted-input" value="0" data-step="0.01">
         </div>
 
         <div class="input-group">
             <label>Разові комісії (Оцінка, Нотаріус, Банк) (<span id="unitFees">USD</span>)</label>
-            <input type="number" id="oneTimeFees" value="0">
+            <input type="text" inputmode="numeric" id="oneTimeFees" class="formatted-input" value="0">
         </div>
 
         <button id="calculateBtn" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-bold mt-2">Розрахувати</button>
