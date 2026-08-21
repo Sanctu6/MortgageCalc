@@ -1,13 +1,15 @@
 const MortgageCalculator = (() => {
     // ========== Constants ==========
     const CONFIG = {
-        DEFAULT_CURRENCY: 'USD',
+        DEFAULT_CURRENCY: 'UAH',
         DEFAULT_MODE: 'payment',
         DEFAULT_EXCHANGE_RATE: 40,
         MAX_MONTHS: 600, // 50 years safety limit
         EPSILON: 0.0001, // For floating-point comparison
         PFU_RATE: 0.01, // 1% pension fund fee
         MONTHS_PER_YEAR: 12,
+        PROMO_RATE_MONTHS: 120,
+        FOLLOWING_RATE_PERCENT: 10,
     };
 
     const LOCALE_CONFIG = {
@@ -131,12 +133,23 @@ const MortgageCalculator = (() => {
         if (!state.downPaymentManual) {
             DOM.downPayment.value = Math.round(price * 0.2);
         }
+        updateDownPaymentLimits(price);
         calculate();
     };
 
     const handleDownPaymentInput = () => {
         state.downPaymentManual = true;
+        const price = parseFloat(DOM.price.value) || 0;
+        const minimum = price * 0.2;
+        const value = parseFloat(DOM.downPayment.value) || 0;
+        if (value < minimum) DOM.downPayment.value = Math.ceil(minimum);
+        if (value > price) DOM.downPayment.value = price;
         calculate();
+    };
+
+    const updateDownPaymentLimits = (price) => {
+        DOM.downPayment.min = Math.ceil(price * 0.2);
+        DOM.downPayment.max = Math.max(Math.floor(price - 1), 0);
     };
 
     const handleCurrencyChange = () => {
@@ -240,7 +253,8 @@ const MortgageCalculator = (() => {
 
     const generateAmortizationSchedule = (
         loanBody,
-        monthlyRate,
+        initialMonthlyRate,
+        followingMonthlyRate,
         monthlyPayment,
         mode,
         insuranceRate
@@ -254,6 +268,9 @@ const MortgageCalculator = (() => {
         const scheduledPayment = monthlyPayment || 0;
 
         while (balance > CONFIG.EPSILON && currentMonth <= CONFIG.MAX_MONTHS) {
+            const monthlyRate = currentMonth <= CONFIG.PROMO_RATE_MONTHS
+                ? initialMonthlyRate
+                : followingMonthlyRate;
             const interest = balance * monthlyRate;
             const insurance = (balance * insuranceRate) / CONFIG.MONTHS_PER_YEAR;
 
@@ -334,6 +351,22 @@ const MortgageCalculator = (() => {
         DOM.resStartCosts.textContent = formatMoney(convertForDisplay(totalStartCosts), currency);
     };
 
+    const calculateMixedRatePayment = (loanBody, initialMonthlyRate, followingMonthlyRate, months) => {
+        let presentValueFactor = 0;
+        for (let month = 1; month <= months; month++) {
+            const rate = month <= CONFIG.PROMO_RATE_MONTHS ? initialMonthlyRate : followingMonthlyRate;
+            let discountFactor = 1;
+            for (let discountMonth = 1; discountMonth <= month; discountMonth++) {
+                const discountRate = discountMonth <= CONFIG.PROMO_RATE_MONTHS
+                    ? initialMonthlyRate
+                    : followingMonthlyRate;
+                discountFactor *= 1 + discountRate;
+            }
+            presentValueFactor += 1 / discountFactor;
+        }
+        return loanBody / presentValueFactor;
+    };
+
     // ========== Main Calculation Logic ==========
     const calculate = () => {
         // Collect inputs
@@ -347,14 +380,17 @@ const MortgageCalculator = (() => {
         const currency = getCurrencyCode();
 
         // Validate
-        if (downPayment >= price) {
-            alert('Перший внесок більший за ціну!');
+        if (price <= 0 || downPayment < price * 0.2 || downPayment >= price) {
+            DOM.downPayment.setCustomValidity('Внесок має бути від 20% до меншої за повну вартості суми.');
+            DOM.downPaymentPercent.textContent = 'Внесок: від 20% і менше 100%';
             return;
         }
+        DOM.downPayment.setCustomValidity('');
 
         // Calculate loan parameters
         const loanBody = price - downPayment;
-        const monthlyRate = ratePercent / 12 / 100;
+        const initialMonthlyRate = ratePercent / 12 / 100;
+        const followingMonthlyRate = CONFIG.FOLLOWING_RATE_PERCENT / 12 / 100;
 
         // Display down payment percentage
         const downPaymentPercent = (downPayment / price) * 100;
@@ -367,10 +403,15 @@ const MortgageCalculator = (() => {
         if (mode === 'term') {
             const years = parseFloat(DOM.years.value) || 0;
             months = years * CONFIG.MONTHS_PER_YEAR;
-            monthlyPayment = calculateMonthlyPaymentAnnuity(loanBody, monthlyRate, months);
+            monthlyPayment = calculateMixedRatePayment(
+                loanBody,
+                initialMonthlyRate,
+                followingMonthlyRate,
+                months
+            );
         } else {
             monthlyPayment = parseFloat(DOM.targetPayment.value) || 0;
-            if (!validateInputs(loanBody, monthlyPayment, monthlyRate)) {
+            if (!validateInputs(loanBody, monthlyPayment, initialMonthlyRate)) {
                 return;
             }
         }
@@ -378,7 +419,8 @@ const MortgageCalculator = (() => {
         // Generate amortization schedule
         const result = generateAmortizationSchedule(
             loanBody,
-            monthlyRate,
+            initialMonthlyRate,
+            followingMonthlyRate,
             monthlyPayment,
             mode,
             insuranceRate
@@ -411,6 +453,7 @@ const MortgageCalculator = (() => {
     // ========== Initialization ==========
     const init = () => {
         DOM.init();
+        updateDownPaymentLimits(parseFloat(DOM.price.value) || 0);
         setupEventListeners();
         initializeComfortPayment();
         handleModeChange();
