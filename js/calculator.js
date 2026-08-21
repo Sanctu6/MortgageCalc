@@ -37,6 +37,7 @@ const MortgageCalculator = (() => {
         pfuCheck: null,
         insuranceRate: null,
         oneTimeFees: null,
+        inflationRate: null,
         numericInputs: [],
 
         // UI elements
@@ -57,6 +58,7 @@ const MortgageCalculator = (() => {
         resPayment: null,
         resTerm: null,
         resOverpay: null,
+        resRealOverpay: null,
         resStartCosts: null,
         scheduleBody: null,
 
@@ -73,6 +75,7 @@ const MortgageCalculator = (() => {
             this.pfuCheck = document.getElementById('pfuCheck');
             this.insuranceRate = document.getElementById('insuranceRate');
             this.oneTimeFees = document.getElementById('oneTimeFees');
+            this.inflationRate = document.getElementById('inflationRate');
             this.numericInputs = [...document.querySelectorAll('.formatted-input')];
 
             // UI elements
@@ -93,6 +96,7 @@ const MortgageCalculator = (() => {
             this.resPayment = document.getElementById('resPayment');
             this.resTerm = document.getElementById('resTerm');
             this.resOverpay = document.getElementById('resOverpay');
+            this.resRealOverpay = document.getElementById('resRealOverpay');
             this.resStartCosts = document.getElementById('resStartCosts');
             this.scheduleBody = document.getElementById('scheduleBody');
         },
@@ -117,7 +121,7 @@ const MortgageCalculator = (() => {
         });
 
         // Also calculate on any parameter change
-        [DOM.rate, DOM.years, DOM.targetPayment, DOM.pfuCheck, DOM.insuranceRate, DOM.oneTimeFees]
+        [DOM.rate, DOM.years, DOM.targetPayment, DOM.pfuCheck, DOM.insuranceRate, DOM.oneTimeFees, DOM.inflationRate]
             .forEach(el => {
                 if (el.type === 'checkbox') {
                     el.addEventListener('change', calculate);
@@ -301,11 +305,13 @@ const MortgageCalculator = (() => {
         monthlyPayment,
         mode,
         insuranceRate,
-        plannedMonths
+        plannedMonths,
+        annualInflationRate
     ) => {
         let balance = loanBody;
         let totalInterest = 0;
         let totalInsurance = 0;
+        let inflationAdjustedOverpay = 0;
         let scheduleRows = [];
         let currentMonth = 1;
         let currentPayment = monthlyPayment || 0;
@@ -344,6 +350,10 @@ const MortgageCalculator = (() => {
             balance -= principal;
             totalInterest += interest;
             totalInsurance += insurance;
+            inflationAdjustedOverpay += (interest + insurance) / Math.pow(
+                1 + annualInflationRate,
+                currentMonth / CONFIG.MONTHS_PER_YEAR
+            );
 
             // Format values for display
             const displayValues = {
@@ -366,6 +376,7 @@ const MortgageCalculator = (() => {
             months: currentMonth,
             totalInterest,
             totalInsurance,
+            inflationAdjustedOverpay,
             paymentAfterRateChange,
         };
     };
@@ -387,7 +398,7 @@ const MortgageCalculator = (() => {
         DOM.scheduleBody.innerHTML = html;
     };
 
-    const renderResults = (monthlyPayment, months, totalOverpay, totalStartCosts, loanBody, insuranceRate, currency, paymentAfterRateChange) => {
+    const renderResults = (monthlyPayment, months, totalOverpay, inflationAdjustedOverpay, totalStartCosts, loanBody, insuranceRate, currency, paymentAfterRateChange) => {
         // Monthly payment with insurance
         const firstMonthInsurance = (loanBody * insuranceRate) / CONFIG.MONTHS_PER_YEAR;
         const displayPayment = convertForDisplay(monthlyPayment);
@@ -406,6 +417,7 @@ const MortgageCalculator = (() => {
 
         // Overpayment
         DOM.resOverpay.textContent = formatMoney(convertForDisplay(totalOverpay), currency);
+        DOM.resRealOverpay.textContent = formatMoney(convertForDisplay(inflationAdjustedOverpay), currency);
 
         // Start costs
         DOM.resStartCosts.textContent = formatMoney(convertForDisplay(totalStartCosts), currency);
@@ -422,6 +434,7 @@ const MortgageCalculator = (() => {
         const mode = DOM.mode.value;
         const insuranceRate = readNumber(DOM.insuranceRate) / 100;
         const oneTimeFees = readNumber(DOM.oneTimeFees);
+        const annualInflationRate = readNumber(DOM.inflationRate) / 100;
         const hasPFU = DOM.pfuCheck.checked;
         const currency = getCurrencyCode();
 
@@ -461,7 +474,8 @@ const MortgageCalculator = (() => {
             monthlyPayment,
             mode,
             insuranceRate,
-            months
+            months,
+            annualInflationRate
         );
 
         if (mode === 'payment') {
@@ -481,6 +495,7 @@ const MortgageCalculator = (() => {
             monthlyPayment,
             months,
             totalOverpay,
+            result.inflationAdjustedOverpay,
             totalStartCosts,
             loanBody,
             insuranceRate,

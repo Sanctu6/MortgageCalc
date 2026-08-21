@@ -89,6 +89,12 @@
             <input type="text" inputmode="numeric" id="oneTimeFees" class="formatted-input" value="0">
         </div>
 
+        <div class="input-group">
+            <label>Прогнозована інфляція грн (% на рік)</label>
+            <input type="text" inputmode="decimal" id="inflationRate" class="formatted-input" value="7" data-step="0.1">
+            <small class="hint">Орієнтир для порівняння майбутніх витрат із грошима сьогодні</small>
+        </div>
+
         <button id="calculateBtn" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-bold mt-2">Розрахувати</button>
         <p id="errorMessage" class="error-message hidden" role="alert" aria-live="polite"></p>
     </div>
@@ -103,7 +109,7 @@
             <span class="rate-badge">7% → 10%</span>
         </div>
         
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 bg-gray-50 p-4 rounded">
             <div>
                 <p class="text-sm text-gray-500">Щомісячний платіж</p>
                 <p class="text-lg font-bold text-blue-600" id="resPayment">-</p>
@@ -115,6 +121,10 @@
             <div>
                 <p class="text-sm text-gray-500">Загальна переплата</p>
                 <p class="text-lg font-bold" id="resOverpay">-</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Переплата у цінах сьогодні</p>
+                <p class="text-lg font-bold text-teal-700" id="resRealOverpay">-</p>
             </div>
              <div>
                 <p class="text-sm text-gray-500">Витрати на старті</p>

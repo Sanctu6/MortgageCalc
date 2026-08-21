@@ -87,7 +87,6 @@ button#calculateBtn:hover { background: var(--accent-dark); transform: translate
     background: #f0f6f2;
     border: 1px solid var(--line);
 }
-}
 
 /* Input Group Styling */
 .input-group {
