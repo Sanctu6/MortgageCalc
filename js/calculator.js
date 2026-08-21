@@ -46,6 +46,7 @@ const MortgageCalculator = (() => {
         paymentInputGroup: null,
         calculateBtn: null,
         downPaymentPercent: null,
+        errorMessage: null,
 
         // Unit labels
         unitPrice: null,
@@ -81,6 +82,7 @@ const MortgageCalculator = (() => {
             this.paymentInputGroup = document.getElementById('paymentInputGroup');
             this.calculateBtn = document.getElementById('calculateBtn');
             this.downPaymentPercent = document.getElementById('downPaymentPercent');
+            this.errorMessage = document.getElementById('errorMessage');
 
             // Unit labels
             this.unitPrice = document.getElementById('unitPrice');
@@ -214,6 +216,16 @@ const MortgageCalculator = (() => {
             : `${formattedInteger}.${decimalPart}`;
     };
 
+    const showError = (message) => {
+        DOM.errorMessage.textContent = message;
+        DOM.errorMessage.classList.remove('hidden');
+    };
+
+    const clearError = () => {
+        DOM.errorMessage.textContent = '';
+        DOM.errorMessage.classList.add('hidden');
+    };
+
     const formatMoney = (amount, currency) => {
         if (!isFinite(amount)) amount = 0;
 
@@ -267,7 +279,7 @@ const MortgageCalculator = (() => {
                 convertForDisplay(firstMonthInterest),
                 getCurrencyCode()
             );
-            alert(`Платіж занадто малий! Тільки відсотки в перший місяць складають ${formattedInterest}`);
+            showError(`Платіж замалий: відсотки за перший місяць складають ${formattedInterest}.`);
             return false;
         }
         return true;
@@ -397,6 +409,8 @@ const MortgageCalculator = (() => {
 
     // ========== Main Calculation Logic ==========
     const calculate = () => {
+        clearError();
+
         // Collect inputs
         const price = readNumber(DOM.price);
         const downPayment = readNumber(DOM.downPayment);
@@ -409,11 +423,10 @@ const MortgageCalculator = (() => {
 
         // Validate
         if (price <= 0 || downPayment < price * 0.2 || downPayment >= price) {
-            DOM.downPayment.setCustomValidity('Внесок має бути від 20% до меншої за повну вартості суми.');
             DOM.downPaymentPercent.textContent = 'Внесок: від 20% і менше 100%';
+            showError('Перший внесок має бути не менше 20% і менше повної вартості нерухомості.');
             return;
         }
-        DOM.downPayment.setCustomValidity('');
 
         // Calculate loan parameters
         const loanBody = price - downPayment;

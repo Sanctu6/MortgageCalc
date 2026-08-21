@@ -68,6 +68,17 @@ button#calculateBtn {
 
 button#calculateBtn:hover { background: var(--accent-dark); transform: translateY(-1px); }
 
+.error-message {
+    background: #fff1f1;
+    border-left: 3px solid #c0392b;
+    color: #a1261c;
+    font-family: 'Trebuchet MS', sans-serif;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    margin: 0.85rem 0 0;
+    padding: 0.65rem 0.75rem;
+}
+
 #resPayment { color: var(--accent-dark); }
 #resStartCosts { color: var(--warning); }
 
